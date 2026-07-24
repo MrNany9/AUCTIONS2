@@ -1,0 +1,169 @@
+// מערכת ניהול ועד בית - Prisma schema
+// SQLite for development. To move to Postgres, change provider to "postgresql"
+// and update DATABASE_URL. SQLite has no native enums, so statuses/roles are
+// stored as validated strings (see src/lib/enums.ts for the allowed values).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// חשבונות משתמשים - תפקידים: ADMIN | COMMITTEE | RESIDENT
+model User {
+  id           String     @id @default(cuid())
+  fullName     String
+  email        String     @unique
+  passwordHash String
+  role         String     @default("RESIDENT")
+  buildingId   String? // עבור ועד בניין - הבניין שבאחריותו
+  building     Building?  @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  resident     Resident? // עבור דייר - הדייר המקושר
+  createdAt    DateTime   @default(now())
+}
+
+// בניין
+model Building {
+  id                 String     @id @default(cuid())
+  name               String
+  address            String
+  city               String
+  numUnits           Int        @default(0)
+  monthlyFeePerUnit  Float      @default(0) // דמי ועד חודשיים לדירה (₪)
+  notes              String?
+  createdAt          DateTime   @default(now())
+
+  units       Unit[]
+  residents   Resident[]
+  charges     Charge[]
+  maintenance MaintenanceRequest[]
+  expenses    Expense[]
+  users       User[]
+}
+
+// דירה / יחידה
+model Unit {
+  id         String     @id @default(cuid())
+  buildingId String
+  building   Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  number     String // מספר דירה
+  floor      Int?
+  size       Float? // מ"ר
+  residents  Resident[]
+
+  @@unique([buildingId, number])
+}
+
+// דייר
+model Resident {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  unitId     String?
+  unit       Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  userId     String?  @unique
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  fullName   String
+  phone      String?
+  email      String?
+  isOwner    Boolean  @default(true) // בעלים או שוכר
+  moveInDate DateTime @default(now())
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  charges  Charge[]
+  payments Payment[]
+  requests MaintenanceRequest[]
+}
+
+// דרישת תשלום - type: MONTHLY_FEE | SPECIAL | FINE
+// status: OPEN | PARTIAL | PAID | OVERDUE
+model Charge {
+  id          String    @id @default(cuid())
+  buildingId  String
+  building    Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  residentId  String
+  resident    Resident  @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  type        String    @default("MONTHLY_FEE")
+  amount      Float
+  dueDate     DateTime
+  period      String? // YYYY-MM עבור דמי ועד חודשיים
+  description String?
+  status      String    @default("OPEN")
+  createdAt   DateTime  @default(now())
+
+  payments Payment[]
+}
+
+// תשלום - method: CASH | TRANSFER | CHECK | ONLINE
+model Payment {
+  id         String    @id @default(cuid())
+  residentId String
+  resident   Resident  @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  chargeId   String?
+  charge     Charge?   @relation(fields: [chargeId], references: [id], onDelete: SetNull)
+  amount     Float
+  date       DateTime  @default(now())
+  method     String    @default("TRANSFER")
+  reference  String? // אסמכתא / מספר קבלה
+  note       String?
+  createdAt  DateTime  @default(now())
+}
+
+// קריאת תיקון / תחזוקה
+// category: ELEVATOR | PLUMBING | ELECTRICITY | CLEANING | GARDEN | STRUCTURE | OTHER
+// priority: LOW | MED | HIGH | URGENT
+// status: OPEN | IN_PROGRESS | RESOLVED | CLOSED
+model MaintenanceRequest {
+  id                 String    @id @default(cuid())
+  buildingId         String
+  building           Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  reportedById       String?
+  reportedBy         Resident? @relation(fields: [reportedById], references: [id], onDelete: SetNull)
+  title              String
+  description        String?
+  category           String    @default("OTHER")
+  priority           String    @default("MED")
+  status             String    @default("OPEN")
+  assignedSupplierId String?
+  assignedSupplier   Supplier? @relation(fields: [assignedSupplierId], references: [id], onDelete: SetNull)
+  cost               Float?
+  createdAt          DateTime  @default(now())
+  resolvedAt         DateTime?
+
+  expenses Expense[]
+}
+
+// ספק שירות
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  service   String // תחום שירות (חשמל, אינסטלציה, מעליות...)
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  requests MaintenanceRequest[]
+  expenses Expense[]
+}
+
+// הוצאה
+model Expense {
+  id           String              @id @default(cuid())
+  buildingId   String
+  building     Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  supplierId   String?
+  supplier     Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  requestId    String?
+  request      MaintenanceRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  category     String              @default("OTHER")
+  amount       Float
+  date         DateTime            @default(now())
+  description  String?
+  createdAt    DateTime            @default(now())
+}
