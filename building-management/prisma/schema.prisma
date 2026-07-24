@@ -36,12 +36,15 @@ model Building {
   notes              String?
   createdAt          DateTime   @default(now())
 
-  units       Unit[]
-  residents   Resident[]
-  charges     Charge[]
-  maintenance MaintenanceRequest[]
-  expenses    Expense[]
-  users       User[]
+  units         Unit[]
+  residents     Resident[]
+  charges       Charge[]
+  maintenance   MaintenanceRequest[]
+  expenses      Expense[]
+  users         User[]
+  schedules     MaintenanceSchedule[]
+  contracts     SupplierContract[]
+  announcements Announcement[]
 }
 
 // דירה / יחידה
@@ -124,8 +127,11 @@ model MaintenanceRequest {
   building           Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   reportedById       String?
   reportedBy         Resident? @relation(fields: [reportedById], references: [id], onDelete: SetNull)
+  scheduleId         String? // אם נוצרה מתוכנית תחזוקה מונעת
+  schedule           MaintenanceSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
   title              String
   description        String?
+  location           String? // מיקום בבניין (לובי, חניון, קומה 2...)
   category           String    @default("OTHER")
   priority           String    @default("MED")
   status             String    @default("OPEN")
@@ -148,8 +154,67 @@ model Supplier {
   notes     String?
   createdAt DateTime @default(now())
 
+  requests  MaintenanceRequest[]
+  expenses  Expense[]
+  contracts SupplierContract[]
+  schedules MaintenanceSchedule[]
+}
+
+// תוכנית תחזוקה מונעת - מייצרת קריאות תיקון אוטומטית כשמגיע המועד
+model MaintenanceSchedule {
+  id              String    @id @default(cuid())
+  buildingId      String
+  building        Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  title           String // למשל: בדיקת בטיחות למעלית
+  description     String?
+  category        String    @default("OTHER")
+  frequencyMonths Int // תדירות בחודשים (1, 3, 6, 12...)
+  nextDueAt       DateTime // המועד הבא לביצוע
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+
   requests MaintenanceRequest[]
-  expenses Expense[]
+}
+
+// חוזה שירות עם ספק - התראה לפני פקיעה
+model SupplierContract {
+  id          String    @id @default(cuid())
+  supplierId  String
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  buildingId  String?
+  building    Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  description String // למשל: חוזה שירות שנתי למעלית
+  monthlyCost Float     @default(0)
+  startDate   DateTime
+  endDate     DateTime
+  notes       String?
+  createdAt   DateTime  @default(now())
+}
+
+// הודעה לדיירים (לוח מודעות)
+model Announcement {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  title      String
+  body       String
+  pinned     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// יומן הודעות שנשלחו (מייל/תזכורות) - status: SENT | SIMULATED | FAILED
+model Notification {
+  id         String   @id @default(cuid())
+  residentId String?
+  email      String
+  type       String   @default("DEBT_REMINDER")
+  subject    String
+  body       String
+  status     String
+  error      String?
+  createdAt  DateTime @default(now())
 }
 
 // הוצאה

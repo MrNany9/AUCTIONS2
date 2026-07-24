@@ -20,7 +20,7 @@ export async function PATCH(
     if (!existing) return { error: "קריאה לא נמצאה" };
 
     const data: Record<string, unknown> = {};
-    for (const k of ["title", "description", "category", "priority", "status"]) {
+    for (const k of ["title", "description", "location", "category", "priority", "status"]) {
       if (body[k] !== undefined) data[k] = body[k];
     }
     if (body.assignedSupplierId !== undefined)

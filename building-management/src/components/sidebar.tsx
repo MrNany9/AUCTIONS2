@@ -11,6 +11,7 @@ import {
   Truck,
   Receipt,
   BarChart3,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/enums";
@@ -29,6 +30,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard/charges", label: "דרישות תשלום", icon: FileText, roles: ["ADMIN", "COMMITTEE", "RESIDENT"] },
   { href: "/dashboard/payments", label: "תשלומים וגבייה", icon: Wallet, roles: ["ADMIN", "COMMITTEE", "RESIDENT"] },
   { href: "/dashboard/maintenance", label: "תיקונים ותחזוקה", icon: Wrench, roles: ["ADMIN", "COMMITTEE", "RESIDENT"] },
+  { href: "/dashboard/announcements", label: "הודעות לדיירים", icon: Megaphone, roles: ["ADMIN", "COMMITTEE", "RESIDENT"] },
   { href: "/dashboard/suppliers", label: "ספקים", icon: Truck, roles: ["ADMIN", "COMMITTEE"] },
   { href: "/dashboard/expenses", label: "הוצאות", icon: Receipt, roles: ["ADMIN", "COMMITTEE"] },
   { href: "/dashboard/reports", label: "דוחות", icon: BarChart3, roles: ["ADMIN", "COMMITTEE"] },

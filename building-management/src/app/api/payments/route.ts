@@ -34,6 +34,16 @@ export async function POST(req: NextRequest) {
     await requireRole("ADMIN", "COMMITTEE");
     const body = await req.json();
 
+    // מספר קבלה אוטומטי אם לא הוזנה אסמכתא: KBL-<שנה>-<מספר רץ>
+    let reference: string | null = body.reference || null;
+    if (!reference) {
+      const year = new Date().getFullYear();
+      const count = await prisma.payment.count({
+        where: { reference: { startsWith: `KBL-${year}-` } },
+      });
+      reference = `KBL-${year}-${String(count + 1).padStart(5, "0")}`;
+    }
+
     const payment = await prisma.payment.create({
       data: {
         residentId: body.residentId,
@@ -41,7 +51,7 @@ export async function POST(req: NextRequest) {
         amount: Number(body.amount),
         date: body.date ? new Date(body.date) : new Date(),
         method: body.method || "TRANSFER",
-        reference: body.reference || null,
+        reference,
         note: body.note || null,
       },
     });

@@ -8,9 +8,11 @@ import {
   PiggyBank,
   Percent,
 } from "lucide-react";
+import { AlertTriangle, Megaphone } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildingSummary, residentBalance } from "@/lib/finance";
+import { expiringContracts } from "@/lib/preventive";
 import { StatCard } from "@/components/stat-card";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +37,7 @@ export default async function DashboardPage() {
 
   const scope = user.role === "COMMITTEE" ? user.buildingId ?? undefined : undefined;
   const summary = await buildingSummary(scope);
+  const contracts = await expiringContracts(60, scope);
 
   const [buildingCount, residentCount, delinquents, openRequests] =
     await Promise.all([
@@ -77,6 +80,24 @@ export default async function DashboardPage() {
         title="לוח בקרה"
         description="מבט־על על מצב הגבייה, החוב הפתוח והתחזוקה"
       />
+
+      {contracts.length > 0 && (
+        <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-semibold">
+            <AlertTriangle className="h-4 w-4 text-warning-foreground" />
+            חוזי שירות שפוקעים בקרוב
+          </p>
+          <ul className="space-y-0.5 text-sm text-muted-foreground">
+            {contracts.slice(0, 4).map((c) => (
+              <li key={c.id}>
+                {c.description} ({c.supplier.name}
+                {c.building ? ` · ${c.building.name}` : ""}) — עד{" "}
+                {formatDate(c.endDate)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -217,6 +238,11 @@ async function ResidentDashboard({ residentId }: { residentId: string | null }) 
     const paid = c.payments.reduce((s, p) => s + p.amount, 0);
     return paid < c.amount;
   });
+  const announcements = await prisma.announcement.findMany({
+    where: { buildingId: resident.buildingId },
+    orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+    take: 3,
+  });
 
   return (
     <div>
@@ -243,6 +269,30 @@ async function ResidentDashboard({ residentId }: { residentId: string | null }) 
           icon={PiggyBank}
         />
       </div>
+
+      {announcements.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Megaphone className="h-4 w-4 text-primary" />
+              הודעות מהוועד
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {announcements.map((a) => (
+              <div key={a.id} className="rounded-md bg-muted/50 p-3">
+                <p className="text-sm font-semibold">{a.title}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {a.body}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatDate(a.createdAt)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mt-6">
         <CardHeader>

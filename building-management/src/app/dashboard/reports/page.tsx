@@ -18,6 +18,11 @@ import {
   EXPENSE_CATEGORY_LABELS,
   type ExpenseCategory,
 } from "@/lib/enums";
+import {
+  ExportButtons,
+  RemindAllButton,
+  RemindOneButton,
+} from "./report-actions";
 
 export default async function ReportsPage() {
   const user = (await getSession())!;
@@ -74,8 +79,10 @@ export default async function ReportsPage() {
   });
   const debtors = residents
     .map((r) => ({
+      id: r.id,
       name: r.fullName,
       phone: r.phone,
+      hasEmail: !!r.email,
       building: r.building.name,
       unit: r.unit?.number ?? "—",
       balance:
@@ -100,6 +107,7 @@ export default async function ReportsPage() {
       <PageHeader
         title="דוחות"
         description="דוחות גבייה, חייבים והוצאות"
+        action={<ExportButtons />}
       />
 
       <Card className="mb-6">
@@ -238,8 +246,9 @@ export default async function ReportsPage() {
       </div>
 
       <Card className="mt-6">
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>דוח חייבים ({debtors.length})</CardTitle>
+          {debtors.length > 0 && <RemindAllButton />}
         </CardHeader>
         <CardContent className="p-0">
           {debtors.length === 0 ? (
@@ -255,11 +264,12 @@ export default async function ReportsPage() {
                   <TableHead>דירה</TableHead>
                   <TableHead>טלפון</TableHead>
                   <TableHead>חוב</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {debtors.map((d, i) => (
-                  <TableRow key={i}>
+                {debtors.map((d) => (
+                  <TableRow key={d.id}>
                     <TableCell className="font-medium">{d.name}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {d.building}
@@ -268,6 +278,9 @@ export default async function ReportsPage() {
                     <TableCell dir="ltr">{d.phone ?? "—"}</TableCell>
                     <TableCell className="font-semibold tabular-nums text-destructive">
                       {formatCurrency(d.balance)}
+                    </TableCell>
+                    <TableCell>
+                      <RemindOneButton residentId={d.id} hasEmail={d.hasEmail} />
                     </TableCell>
                   </TableRow>
                 ))}

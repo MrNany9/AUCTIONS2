@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
         reportedById: user.residentId || body.reportedById || null,
         title: body.title,
         description: body.description || null,
+        location: body.location || null,
         category: body.category || "OTHER",
         priority: body.priority || "MED",
         status: "OPEN",

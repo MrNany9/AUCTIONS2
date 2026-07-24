@@ -15,10 +15,14 @@ function periodOf(d: Date) {
 
 async function main() {
   console.log("🌱 מנקה נתונים קיימים...");
+  await prisma.notification.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.charge.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.maintenanceRequest.deleteMany();
+  await prisma.maintenanceSchedule.deleteMany();
+  await prisma.supplierContract.deleteMany();
+  await prisma.announcement.deleteMany();
   await prisma.resident.deleteMany();
   await prisma.unit.deleteMany();
   await prisma.supplier.deleteMany();
@@ -270,6 +274,76 @@ async function main() {
   });
 
   console.log("🧾 נוצרו הוצאות");
+
+  // תוכניות תחזוקה מונעת (הראשונה כבר הגיע מועדה - תיצור קריאה אוטומטית)
+  await prisma.maintenanceSchedule.create({
+    data: {
+      buildingId: building.id,
+      supplierId: supElevator.id,
+      title: "בדיקת בטיחות תקופתית למעלית",
+      description: "בדיקה חצי-שנתית לפי תקן",
+      category: "ELEVATOR",
+      frequencyMonths: 6,
+      nextDueAt: new Date(),
+    },
+  });
+  await prisma.maintenanceSchedule.create({
+    data: {
+      buildingId: building.id,
+      title: "ניקוי מאגר מים וסיוד גג",
+      category: "STRUCTURE",
+      frequencyMonths: 12,
+      nextDueAt: monthsAgo(-3),
+    },
+  });
+
+  console.log("🔁 נוצרו תוכניות תחזוקה מונעת");
+
+  // חוזי שירות
+  const contractEnd = new Date();
+  contractEnd.setDate(contractEnd.getDate() + 45); // פוקע בקרוב - להדגמת ההתראה
+  await prisma.supplierContract.create({
+    data: {
+      supplierId: supElevator.id,
+      buildingId: building.id,
+      description: "חוזה שירות שנתי למעלית",
+      monthlyCost: 450,
+      startDate: monthsAgo(11),
+      endDate: contractEnd,
+    },
+  });
+  const cleanEnd = new Date();
+  cleanEnd.setFullYear(cleanEnd.getFullYear() + 1);
+  await prisma.supplierContract.create({
+    data: {
+      supplierId: supPlumb.id,
+      description: "מסגרת שירותי אינסטלציה לכל הבניינים",
+      monthlyCost: 200,
+      startDate: monthsAgo(2),
+      endDate: cleanEnd,
+    },
+  });
+
+  console.log("📄 נוצרו חוזי שירות");
+
+  // הודעות לדיירים
+  await prisma.announcement.create({
+    data: {
+      buildingId: building.id,
+      title: "הפסקת מים מתוכננת ביום ראשון",
+      body: "ביום ראשון הקרוב בין השעות 09:00–12:00 תתבצע החלפת צנרת ראשית. אנא הצטיידו במים מראש.",
+      pinned: true,
+    },
+  });
+  await prisma.announcement.create({
+    data: {
+      buildingId: building.id,
+      title: "אסיפת דיירים שנתית",
+      body: "אסיפת הדיירים השנתית תתקיים בלובי הבניין בעוד שבועיים בשעה 19:30. נוכחותכם חשובה!",
+    },
+  });
+
+  console.log("📣 נוצרו הודעות לדיירים");
   console.log("\n✅ מסד הנתונים אותחל בהצלחה!");
   console.log("\nפרטי התחברות לדוגמה:");
   console.log("  מנהל:  admin@vaad.co.il / admin123");
