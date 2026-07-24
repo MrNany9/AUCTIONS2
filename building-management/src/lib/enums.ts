@@ -8,12 +8,112 @@ export const ROLE_LABELS: Record<Role, string> = {
   RESIDENT: "דייר",
 };
 
-export const CHARGE_TYPES = ["MONTHLY_FEE", "SPECIAL", "FINE"] as const;
+export const CHARGE_TYPES = [
+  "MONTHLY_FEE",
+  "SPECIAL",
+  "FINE",
+  "OLD_DEBT",
+  "SERVICE",
+] as const;
 export type ChargeType = (typeof CHARGE_TYPES)[number];
 export const CHARGE_TYPE_LABELS: Record<ChargeType, string> = {
   MONTHLY_FEE: "דמי ועד חודשי",
   SPECIAL: "תשלום מיוחד",
   FINE: "קנס",
+  OLD_DEBT: "חוב ישן",
+  SERVICE: "חיוב שירות",
+};
+
+// סטטוס גבייה של דייר
+export const COLLECTION_STATUSES = [
+  "NONE",
+  "COLLECTION",
+  "LAWYER",
+  "EXECUTION",
+] as const;
+export type CollectionStatus = (typeof COLLECTION_STATUSES)[number];
+export const COLLECTION_STATUS_LABELS: Record<CollectionStatus, string> = {
+  NONE: "תקין",
+  COLLECTION: "בגבייה",
+  LAWYER: "בטיפול עו\"ד",
+  EXECUTION: "בהוצל\"פ",
+};
+
+// למי לחייב קריאת שירות
+export const BILL_TO_OPTIONS = [
+  "COMMITTEE",
+  "RESIDENT",
+  "BUILDING",
+  "NONE",
+] as const;
+export type BillTo = (typeof BILL_TO_OPTIONS)[number];
+export const BILL_TO_LABELS: Record<BillTo, string> = {
+  COMMITTEE: "ועד (הוצאה)",
+  RESIDENT: "דייר (דרישת תשלום)",
+  BUILDING: "בניין (הוצאה)",
+  NONE: "ללא חיוב",
+};
+
+// סוגי רישום ביומן דייר
+export const LOG_KINDS = ["CALL", "LETTER", "SMS", "EMAIL", "NOTE"] as const;
+export type LogKind = (typeof LOG_KINDS)[number];
+export const LOG_KIND_LABELS: Record<LogKind, string> = {
+  CALL: "שיחת טלפון",
+  LETTER: "מכתב",
+  SMS: "SMS",
+  EMAIL: "אימייל",
+  NOTE: "הערה",
+};
+
+// תחומי ספקים למדריך הבניין (לפי מערכת בינה)
+export const TRADES = [
+  "MAINTENANCE",
+  "CLEANING",
+  "GARDENING",
+  "ELEVATOR",
+  "ELECTRICITY_CO",
+  "GAS_CO",
+  "PLUMBER",
+  "ELECTRICIAN",
+  "CARPENTRY",
+  "FIRE",
+  "INTERCOM",
+  "GENERATOR",
+  "LOCKSMITH",
+  "POLISH",
+  "DOORS",
+  "ELECTRIC_GATE",
+  "HEATING",
+  "COMMUNICATION",
+  "PUMPS",
+  "CAMERAS",
+  "INSURANCE",
+  "OTHER",
+] as const;
+export type Trade = (typeof TRADES)[number];
+export const TRADE_LABELS: Record<Trade, string> = {
+  MAINTENANCE: "אחזקה",
+  CLEANING: "ניקיון",
+  GARDENING: "גינון",
+  ELEVATOR: "מעליות",
+  ELECTRICITY_CO: "חברת חשמל",
+  GAS_CO: "חברת גז",
+  PLUMBER: "אינסטלטור",
+  ELECTRICIAN: "חשמלאי",
+  CARPENTRY: "נגרות",
+  FIRE: "כיבוי אש",
+  INTERCOM: "אינטרקום",
+  GENERATOR: "גנרטורים",
+  LOCKSMITH: "מנעולן",
+  POLISH: "פוליש/וקס",
+  DOORS: "דלתות",
+  ELECTRIC_GATE: "שער חשמלי",
+  HEATING: "חימום",
+  COMMUNICATION: "תקשורת",
+  PUMPS: "משאבות",
+  CAMERAS: "מצלמות",
+  INSURANCE: "ביטוח",
+  OTHER: "אחר",
 };
 
 export const CHARGE_STATUSES = ["OPEN", "PARTIAL", "PAID", "OVERDUE"] as const;

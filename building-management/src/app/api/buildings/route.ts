@@ -29,7 +29,12 @@ export async function POST(req: NextRequest) {
         address: body.address,
         city: body.city,
         numUnits: Number(body.numUnits) || 0,
+        floors: body.floors ? Number(body.floors) : null,
         monthlyFeePerUnit: Number(body.monthlyFeePerUnit) || 0,
+        contractor: body.contractor || null,
+        activeSince: body.activeSince ? new Date(body.activeSince) : null,
+        contractStart: body.contractStart ? new Date(body.contractStart) : null,
+        contractEnd: body.contractEnd ? new Date(body.contractEnd) : null,
         notes: body.notes || null,
       },
     });

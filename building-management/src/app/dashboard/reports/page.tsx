@@ -248,7 +248,15 @@ export default async function ReportsPage() {
       <Card className="mt-6">
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>דוח חייבים ({debtors.length})</CardTitle>
-          {debtors.length > 0 && <RemindAllButton />}
+          <div className="flex items-center gap-2">
+            <a
+              href="/dashboard/reports/matrix"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              מטריצה חודשית ←
+            </a>
+            {debtors.length > 0 && <RemindAllButton />}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {debtors.length === 0 ? (

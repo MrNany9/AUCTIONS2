@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
         title: body.title,
         description: body.description || null,
         location: body.location || null,
+        receivedBy: isManager(user) ? user.fullName : null, // מי קיבל את הקריאה
+        reporterPhone: body.reporterPhone || null,
+        recurring: body.recurring ?? false,
+        billTo: body.billTo || "COMMITTEE",
         category: body.category || "OTHER",
         priority: body.priority || "MED",
         status: "OPEN",

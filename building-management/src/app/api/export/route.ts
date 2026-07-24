@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { handle, requireRole, buildingScope } from "@/lib/api";
+import { debtorsMatrix } from "@/lib/matrix";
+import { COLLECTION_STATUS_LABELS, type CollectionStatus } from "@/lib/enums";
 
 // ייצוא CSV: ?type=debtors | payments | expenses
 // הקובץ נפתח נכון באקסל בעברית (BOM + UTF-8)
@@ -81,6 +83,26 @@ export async function GET(req: NextRequest) {
         e.description ?? "",
       ]);
       filename = "expenses.csv";
+    } else if (type === "matrix") {
+      const buildingId =
+        scope.buildingId ||
+        req.nextUrl.searchParams.get("buildingId") ||
+        undefined;
+      const legalOnly = req.nextUrl.searchParams.get("legal") === "1";
+      const m = await debtorsMatrix({ buildingId, legalOnly });
+      headers = ["דירה", "שם", "טלפון", "סטטוס", ...m.periods, "חוב אחר", "סה\"כ"];
+      rows = m.rows.map((r) => [
+        r.unit,
+        r.name,
+        r.phone ?? "",
+        COLLECTION_STATUS_LABELS[r.collectionStatus as CollectionStatus] ??
+          r.collectionStatus,
+        ...m.periods.map((p) => r.months[p] ?? 0),
+        r.otherDebts.reduce((s, d) => s + d.remaining, 0),
+        r.total,
+      ]);
+      rows.push(["", "", "", "סה\"כ חובה", ...m.periods.map(() => ""), "", m.grandTotal]);
+      filename = "debtors-matrix.csv";
     }
 
     const esc = (v: string | number) => {

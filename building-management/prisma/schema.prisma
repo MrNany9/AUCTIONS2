@@ -32,19 +32,38 @@ model Building {
   address            String
   city               String
   numUnits           Int        @default(0)
+  floors             Int? // מספר קומות
   monthlyFeePerUnit  Float      @default(0) // דמי ועד חודשיים לדירה (₪)
+  active             Boolean    @default(true) // בניין פעיל
+  activeSince        DateTime? // תחילת פעילות מול הבניין
+  contractStart      DateTime? // חוזה ניהול - תחילה
+  contractEnd        DateTime? // חוזה ניהול - סיום (התראת חידוש)
+  contractor         String? // קבלן הבניין
   notes              String?
   createdAt          DateTime   @default(now())
 
-  units         Unit[]
-  residents     Resident[]
-  charges       Charge[]
-  maintenance   MaintenanceRequest[]
-  expenses      Expense[]
-  users         User[]
-  schedules     MaintenanceSchedule[]
-  contracts     SupplierContract[]
-  announcements Announcement[]
+  units            Unit[]
+  residents        Resident[]
+  charges          Charge[]
+  maintenance      MaintenanceRequest[]
+  expenses         Expense[]
+  users            User[]
+  schedules        MaintenanceSchedule[]
+  contracts        SupplierContract[]
+  announcements    Announcement[]
+  serviceProviders BuildingSupplier[]
+}
+
+// מדריך ספקי הבניין לפי תחום (חשמלאי, אינסטלטור, מעליות, גז...)
+model BuildingSupplier {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  trade      String // תחום: ELECTRICIAN | PLUMBER | ELEVATOR | GAS | FIRE | INTERCOM...
+
+  @@unique([buildingId, supplierId, trade])
 }
 
 // דירה / יחידה
@@ -70,17 +89,38 @@ model Resident {
   userId     String?  @unique
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  fullName   String
-  phone      String?
-  email      String?
-  isOwner    Boolean  @default(true) // בעלים או שוכר
-  moveInDate DateTime @default(now())
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  fullName         String
+  phone            String?
+  phone2           String? // טלפון נוסף
+  email            String?
+  idNumber         String? // ת.זהות
+  isOwner          Boolean  @default(true) // בעלים או שוכר
+  isCommitteeRep   Boolean  @default(false) // נציג ועד הבית
+  collectionStatus String   @default("NONE") // NONE | LAWYER | EXECUTION | COLLECTION
+  leaseStart       DateTime? // חוזה שכירות - לשוכר
+  leaseEnd         DateTime?
+  standingOrder    Boolean  @default(false) // הוראת קבע
+  chargeDay        Int? // יום חיוב בחודש
+  moveInDate       DateTime @default(now())
+  moveOutDate      DateTime? // תאריך עזיבה (בהחלפת דייר)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
 
   charges  Charge[]
   payments Payment[]
   requests MaintenanceRequest[]
+  logs     ResidentLog[]
+}
+
+// יומן דייר - שיחות, מכתבים, הערות
+model ResidentLog {
+  id         String   @id @default(cuid())
+  residentId String
+  resident   Resident @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  kind       String   @default("CALL") // CALL | LETTER | SMS | EMAIL | NOTE
+  content    String
+  createdBy  String? // שם המשתמש שרשם
+  createdAt  DateTime @default(now())
 }
 
 // דרישת תשלום - type: MONTHLY_FEE | SPECIAL | FINE
@@ -132,6 +172,10 @@ model MaintenanceRequest {
   title              String
   description        String?
   location           String? // מיקום בבניין (לובי, חניון, קומה 2...)
+  receivedBy         String? // מי קיבל את הקריאה
+  reporterPhone      String? // טלפון מוסר הקריאה
+  recurring          Boolean   @default(false) // תקלה חוזרת
+  billTo             String    @default("COMMITTEE") // COMMITTEE | RESIDENT | BUILDING | NONE
   category           String    @default("OTHER")
   priority           String    @default("MED")
   status             String    @default("OPEN")
@@ -158,6 +202,7 @@ model Supplier {
   expenses  Expense[]
   contracts SupplierContract[]
   schedules MaintenanceSchedule[]
+  buildings BuildingSupplier[]
 }
 
 // תוכנית תחזוקה מונעת - מייצרת קריאות תיקון אוטומטית כשמגיע המועד

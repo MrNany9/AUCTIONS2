@@ -15,6 +15,8 @@ function periodOf(d: Date) {
 
 async function main() {
   console.log("🌱 מנקה נתונים קיימים...");
+  await prisma.residentLog.deleteMany();
+  await prisma.buildingSupplier.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.charge.deleteMany();
@@ -31,15 +33,22 @@ async function main() {
 
   const hash = (pw: string) => bcrypt.hashSync(pw, 10);
 
-  // בניין דמו
+  // בניין דמו - חוזה הניהול פוקע בעוד 40 יום (להדגמת התראת חידוש)
   const monthlyFee = 250;
+  const mgmtContractEnd = new Date();
+  mgmtContractEnd.setDate(mgmtContractEnd.getDate() + 40);
   const building = await prisma.building.create({
     data: {
       name: "בניין הרצל 15",
       address: "הרצל 15",
       city: "תל אביב",
       numUnits: 6,
+      floors: 3,
       monthlyFeePerUnit: monthlyFee,
+      contractor: "אשטרום בנייה",
+      activeSince: monthsAgo(30),
+      contractStart: monthsAgo(11),
+      contractEnd: mgmtContractEnd,
       notes: "בניין מגורים בן 3 קומות, כולל מעלית וחניון תת קרקעי.",
     },
   });
@@ -80,12 +89,12 @@ async function main() {
 
   // דיירים + דירות לבניין הראשי
   const residentsData = [
-    { number: "1", floor: 1, name: "דנה לוי", phone: "050-1111111", owner: true },
-    { number: "2", floor: 1, name: "משה פרץ", phone: "050-2222222", owner: true },
-    { number: "3", floor: 2, name: "רונית ישראלי", phone: "050-3333333", owner: false },
-    { number: "4", floor: 2, name: "אבי מזרחי", phone: "050-4444444", owner: true },
-    { number: "5", floor: 3, name: "שרה כהן", phone: "050-5555555", owner: true },
-    { number: "6", floor: 3, name: "עומר גל", phone: "050-6666666", owner: true },
+    { number: "1", floor: 1, name: "דנה לוי", phone: "050-1111111", owner: true, rep: true },
+    { number: "2", floor: 1, name: "משה פרץ", phone: "050-2222222", owner: true, rep: false },
+    { number: "3", floor: 2, name: "רונית ישראלי", phone: "050-3333333", owner: false, rep: false },
+    { number: "4", floor: 2, name: "אבי מזרחי", phone: "050-4444444", owner: true, rep: true },
+    { number: "5", floor: 3, name: "שרה כהן", phone: "050-5555555", owner: true, rep: false },
+    { number: "6", floor: 3, name: "עומר גל", phone: "050-6666666", owner: true, rep: false },
   ];
 
   const residents = [];
@@ -98,6 +107,9 @@ async function main() {
         size: 90 + Math.round(r.floor * 5),
       },
     });
+    const isDelinquent = r.number === "3";
+    const leaseEnd = new Date();
+    leaseEnd.setMonth(leaseEnd.getMonth() + 7);
     const resident = await prisma.resident.create({
       data: {
         buildingId: building.id,
@@ -106,10 +118,47 @@ async function main() {
         phone: r.phone,
         email: `${r.number}@herzl15.co.il`,
         isOwner: r.owner,
+        isCommitteeRep: r.rep,
+        // הסרבנית מסומנת בטיפול עו"ד; לשוכרת יש חוזה שכירות
+        collectionStatus: isDelinquent ? "LAWYER" : "NONE",
+        leaseStart: r.owner ? null : monthsAgo(5),
+        leaseEnd: r.owner ? null : leaseEnd,
+        standingOrder: !isDelinquent && Number(r.number) % 2 === 0,
+        chargeDay: !isDelinquent && Number(r.number) % 2 === 0 ? 10 : null,
+        idNumber: `0${r.number}2345678`,
       },
     });
     residents.push(resident);
   }
+
+  // יומן דייר לסרבנית + חוב ישן
+  await prisma.residentLog.create({
+    data: {
+      residentId: residents[2].id,
+      kind: "CALL",
+      content: "שוחחתי עם הדיירת על החוב. הבטיחה לשלם עד סוף החודש.",
+      createdBy: "מנהל המערכת",
+    },
+  });
+  await prisma.residentLog.create({
+    data: {
+      residentId: residents[2].id,
+      kind: "LETTER",
+      content: "נשלח מכתב התראה לפני העברה לטיפול משפטי.",
+      createdBy: "מנהל המערכת",
+    },
+  });
+  await prisma.charge.create({
+    data: {
+      buildingId: building.id,
+      residentId: residents[2].id,
+      type: "OLD_DEBT",
+      amount: 290,
+      dueDate: monthsAgo(8),
+      description: "חוב ישן (יתרת פתיחה)",
+      status: "OVERDUE",
+    },
+  });
 
   // חשבון דייר מקושר (הדירה הראשונה)
   const residentUser = await prisma.user.create({
@@ -203,6 +252,17 @@ async function main() {
   });
 
   console.log("🔧 נוצרו ספקים");
+
+  // מדריך ספקי הבניין לפי תחום
+  await prisma.buildingSupplier.createMany({
+    data: [
+      { buildingId: building.id, supplierId: supEl.id, trade: "ELECTRICIAN" },
+      { buildingId: building.id, supplierId: supPlumb.id, trade: "PLUMBER" },
+      { buildingId: building.id, supplierId: supElevator.id, trade: "ELEVATOR" },
+    ],
+  });
+
+  console.log("📒 נוצר מדריך ספקי בניין");
 
   // קריאות תיקון
   await prisma.maintenanceRequest.create({

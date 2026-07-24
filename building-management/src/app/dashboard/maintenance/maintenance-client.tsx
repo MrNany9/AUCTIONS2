@@ -29,7 +29,10 @@ import {
   MAINT_PRIORITY_LABELS,
   MAINT_STATUSES,
   MAINT_STATUS_LABELS,
+  BILL_TO_OPTIONS,
+  BILL_TO_LABELS,
   type MaintCategory,
+  type BillTo,
 } from "@/lib/enums";
 
 interface RequestRow {
@@ -41,6 +44,10 @@ interface RequestRow {
   priority: string;
   status: string;
   cost: number | null;
+  billTo: string;
+  recurring: boolean;
+  receivedBy: string | null;
+  reporterPhone: string | null;
   createdAt: string;
   buildingName: string;
   supplierId: string | null;
@@ -113,6 +120,8 @@ export function MaintenanceClient({
       priority: r.priority,
       assignedSupplierId: r.supplierId ?? "",
       cost: r.cost != null ? String(r.cost) : "",
+      billTo: r.billTo,
+      recurring: r.recurring,
     });
     setError("");
   }
@@ -319,6 +328,9 @@ export function MaintenanceClient({
                         {r.fromSchedule && (
                           <Badge variant="default">מונעת</Badge>
                         )}
+                        {r.recurring && (
+                          <Badge variant="warning">חוזרת</Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {r.location && (
@@ -328,6 +340,7 @@ export function MaintenanceClient({
                           </span>
                         )}
                         {r.reporterName && <span>דווח ע״י {r.reporterName}</span>}
+                        {r.receivedBy && <span>נקלט ע״י {r.receivedBy}</span>}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -384,13 +397,34 @@ export function MaintenanceClient({
               required
             />
           </Field>
-          <Field label="מיקום בבניין">
-            <Input
-              value={(form.location as string) ?? ""}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              placeholder="לובי / חניון / קומה 2 / גג..."
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="מיקום בבניין">
+              <Input
+                value={(form.location as string) ?? ""}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                placeholder="לובי / חניון / קומה 2 / גג..."
+              />
+            </Field>
+            <Field label="טלפון מוסר הקריאה">
+              <Input
+                dir="ltr"
+                value={(form.reporterPhone as string) ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, reporterPhone: e.target.value })
+                }
+              />
+            </Field>
+          </div>
+          {isManager && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={Boolean(form.recurring)}
+                onChange={(e) => setForm({ ...form, recurring: e.target.checked })}
+              />
+              תקלה חוזרת
+            </label>
+          )}
           <Field label="תיאור">
             <Textarea
               value={(form.description as string) ?? ""}
@@ -489,18 +523,40 @@ export function MaintenanceClient({
                 ))}
               </Select>
             </Field>
-            <Field label="עלות (₪)">
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={(form.cost as string) ?? ""}
-                onChange={(e) => setForm({ ...form, cost: e.target.value })}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="עלות (₪)">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={(form.cost as string) ?? ""}
+                  onChange={(e) => setForm({ ...form, cost: e.target.value })}
+                />
+              </Field>
+              <Field label="למי לחייב">
+                <Select
+                  value={(form.billTo as string) ?? "COMMITTEE"}
+                  onChange={(e) => setForm({ ...form, billTo: e.target.value })}
+                >
+                  {BILL_TO_OPTIONS.map((b) => (
+                    <option key={b} value={b}>
+                      {BILL_TO_LABELS[b as BillTo]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={Boolean(form.recurring)}
+                onChange={(e) => setForm({ ...form, recurring: e.target.checked })}
               />
-            </Field>
+              תקלה חוזרת
+            </label>
             <p className="text-xs text-muted-foreground">
-              <Wrench className="mb-0.5 inline h-3 w-3" /> סגירת קריאה עם עלות
-              וספק תרשום הוצאה אוטומטית.
+              <Wrench className="mb-0.5 inline h-3 w-3" /> סגירת קריאה עם עלות:
+              חיוב ועד/בניין רושם הוצאה, חיוב דייר יוצר דרישת תשלום לדייר שדיווח.
             </p>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex justify-end gap-2">

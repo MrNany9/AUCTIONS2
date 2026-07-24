@@ -39,6 +39,19 @@ export default async function DashboardPage() {
   const summary = await buildingSummary(scope);
   const contracts = await expiringContracts(60, scope);
 
+  // חוזי ניהול של בניינים שפוקעים בתוך 60 יום (או שכבר פקעו)
+  const soon = new Date();
+  soon.setDate(soon.getDate() + 60);
+  const renewals = await prisma.building.findMany({
+    where: {
+      active: true,
+      contractEnd: { lte: soon },
+      ...(scope ? { id: scope } : {}),
+    },
+    select: { id: true, name: true, contractEnd: true },
+    orderBy: { contractEnd: "asc" },
+  });
+
   const [buildingCount, residentCount, delinquents, openRequests] =
     await Promise.all([
       prisma.building.count(scope ? { where: { id: scope } } : undefined),
@@ -80,6 +93,23 @@ export default async function DashboardPage() {
         title="לוח בקרה"
         description="מבט־על על מצב הגבייה, החוב הפתוח והתחזוקה"
       />
+
+      {renewals.length > 0 && (
+        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            חוזי ניהול לחידוש
+          </p>
+          <ul className="space-y-0.5 text-sm text-muted-foreground">
+            {renewals.map((b) => (
+              <li key={b.id}>
+                {b.name} — חוזה הניהול {b.contractEnd! < new Date() ? "פג" : "פוקע"}{" "}
+                ב-{formatDate(b.contractEnd)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {contracts.length > 0 && (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-4">
